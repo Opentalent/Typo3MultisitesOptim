@@ -1,8 +1,11 @@
 version: '3'
 services:
   multisites_optim_db:
+    hostname: multisites_optim_db
     container_name: multisites_optim_db
     image: mysql:8.0
+    ports:
+      - 3307:3306
     command:
       - --character-set-server=utf8
       - --collation-server=utf8_unicode_ci
@@ -25,8 +28,3 @@ services:
       - ./docker/uploads:/var/www/html/uploads:cached
     depends_on:
       - multisites_optim_db
-
-volumes:
-  fileadmin:
-  typo3conf:
-  uploads:

@@ -1,0 +1,14 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  Opentalent\Populate\:
+    resource: '../Classes/*'
+
+  Opentalent\Populate\Command\PopulateCommand:
+    tags:
+      - name: 'ot:populate'
+        command: 'ot:populate'
+        schedulable: false
