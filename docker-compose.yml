@@ -1,0 +1,32 @@
+version: '3'
+services:
+  multisites_optim_db:
+    container_name: multisites_optim_db
+    image: mysql:8.0
+    command:
+      - --character-set-server=utf8
+      - --collation-server=utf8_unicode_ci
+    environment:
+      - "MYSQL_USER=typo3"
+      - "MYSQL_PASSWORD=typo3"
+      - "MYSQL_DATABASE=typo3"
+      - "MYSQL_RANDOM_ROOT_PASSWORD=no"
+
+  multisites_optim_typo3:
+    container_name: multisites_optim_typo3
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/fileadmin:/var/www/html/fileadmin:cached
+      - ./docker/typo3conf:/var/www/html/typo3conf:cached
+      - ./docker/uploads:/var/www/html/uploads:cached
+    depends_on:
+      - multisites_optim_db
+
+volumes:
+  fileadmin:
+  typo3conf:
+  uploads:
