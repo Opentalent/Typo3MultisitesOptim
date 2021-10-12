@@ -12,3 +12,9 @@ services:
       - name: 'ot:populate'
         command: 'ot:populate'
         schedulable: false
+
+  Opentalent\Populate\Command\ClearDbCommand:
+    tags:
+      - name: 'ot:clear-db'
+        command: 'ot:clear-db'
+        schedulable: false

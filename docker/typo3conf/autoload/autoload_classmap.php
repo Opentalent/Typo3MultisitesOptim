@@ -5,6 +5,7 @@
 $typo3InstallDir = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
 
 return array(
+    'Opentalent\\Populate\\Command\\ClearDbCommand' => $typo3InstallDir . 'typo3conf/ext/populate/Classes/Command/ClearDbCommand.php',
     'Opentalent\\Populate\\Command\\PopulateCommand' => $typo3InstallDir . 'typo3conf/ext/populate/Classes/Command/PopulateCommand.php',
     'Opentalent\\Populate\\Controller\\SiteController' => $typo3InstallDir . 'typo3conf/ext/populate/Classes/Controller/SiteController.php',
     'Opentalent\\Websites\\Controller\\ActionController' => $typo3InstallDir . 'typo3conf/ext/websites/Classes/Controller/ActionController.php',

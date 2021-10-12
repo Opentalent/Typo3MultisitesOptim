@@ -5,7 +5,6 @@ namespace Opentalent\Populate\Command;
 
 use Opentalent\Populate\Controller\SiteController;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -16,19 +15,13 @@ use TYPO3\CMS\Extbase\Object\ObjectManager;
 /**
  * This CLI command creates as many websites as requested (default: 3000)
  */
-class PopulateCommand extends Command
+class ClearDbCommand extends Command
 {
     protected function configure()
     {
         $this
-            ->setName("ot:populate")
-            ->setDescription("Create as many websites as requested (default: 3000)")
-            ->addArgument(
-                'number',
-                InputArgument::OPTIONAL,
-                "Number of websites to create",
-                3000
-            );
+            ->setName("ot:clear-db")
+            ->setDescription("Clear the db of all the sites created with the populate command");
     }
 
     /**
@@ -36,32 +29,24 @@ class PopulateCommand extends Command
      *
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @throws \Exception
+     * @return int
+     * @throws \TYPO3\CMS\Extbase\Object\Exception
+     * @throws \Throwable
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $io = new SymfonyStyle($input, $output);
 
-        $number = $input->getArgument('number');
-        if ($number < 1) {
-            $io->error('number shall be greater or equal to 1');
-            return 1;
-        }
-
         $siteController = GeneralUtility::makeInstance(ObjectManager::class)->get(SiteController::class);
 
-        $io->progressStart($number);
-        foreach (range(1, $number) as $number) {
-            $siteController->createSiteAction();
-            $io->progressAdvance(1);
-        }
-        $io->progressFinish();
+        $siteController->clearDbAction();
+        $io->info(sprintf("DB cleared"));
 
-        $io->info(sprintf("Clearing cache..."));
         $cacheManager = GeneralUtility::makeInstance(CacheManager::class);
         $cacheManager->flushCaches();
+        $io->info(sprintf("Cache cleared"));
 
-        $io->success(sprintf("Websites have been created"));
+        $io->success(sprintf("The database has been successfully cleared"));
         return 1;
     }
 }

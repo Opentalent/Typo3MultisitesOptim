@@ -12,6 +12,9 @@
 return [
     'ot:populate' => [
         'class' => Opentalent\Populate\Command\PopulateCommand::class
+    ],
+    'ot:clear-db' => [
+        'class' => Opentalent\Populate\Command\ClearDbCommand::class
     ]
 ];
 

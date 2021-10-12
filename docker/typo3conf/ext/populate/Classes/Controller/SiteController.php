@@ -6,6 +6,7 @@ use Opentalent\Websites\Exception\NoSuchRecordException;
 use Opentalent\Websites\Exception\NoSuchWebsiteException;
 use Opentalent\Websites\Controller\ActionController;
 use Opentalent\Websites\Website\WebsiteRepository;
+use PDO;
 use Symfony\Component\Yaml\Yaml;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -78,6 +79,10 @@ class SiteController extends ActionController
      */
     private array $createdFiles;
 
+    protected function typo3_install_dir() {
+        return rtrim(dirname(__FILE__, 6), '/');
+    }
+
     /**
      * Creates a new website and returns the root page uid of the newly created site
      *
@@ -143,9 +148,6 @@ class SiteController extends ActionController
             }
 
             // update sys_template
-            $include = "EXT:fluid_styled_content/Configuration/TypoScript/";
-            $include .= ",EXT:fluid_styled_content/Configuration/TypoScript/Styling/";
-            $include .= ",EXT:form/Configuration/TypoScript/";
 
             $queryBuilder = $this->connectionPool->getQueryBuilderForTable('sys_template');
             $queryBuilder->insert('sys_template')
@@ -155,7 +157,7 @@ class SiteController extends ActionController
                     'sitetitle' => 'Website ' . $websiteUid,
                     'root' => 1,
                     'clear' => 3,
-                    'include_static_file' => $include
+                    'config' => "page = PAGE\npage.10 = TEXT\npage.10.value = Some page of the website " . $websiteUid
                 ])
                 ->execute();
 
@@ -171,7 +173,7 @@ class SiteController extends ActionController
 
             // Create the user_upload and form_definitions directories and update the sys_filemounts table
             $uploadRelPath = "/user_upload/" . $websiteUid;
-            $fileadminDir = $_ENV['TYPO3_PATH_APP'] . "/public/fileadmin";
+            $fileadminDir = $this->typo3_install_dir() . "/public/fileadmin";
             $uploadDir = $fileadminDir . "/" . $uploadRelPath;
             if (file_exists($uploadDir)) {
                 throw new \RuntimeException("A directory or file " . $uploadDir . " already exists. Abort.");
@@ -256,6 +258,149 @@ class SiteController extends ActionController
         }
 
         return $rootUid;
+    }
+
+    /**
+     * Clear the db of all the sites created with the createSiteAction
+     */
+    public function clearDbAction() {
+        // start transactions
+        $this->connectionPool->getConnectionByName('Default')->beginTransaction();
+
+        $trashbin = [];
+
+        // keep tracks of the created folders and files to be able to remove them during a rollback
+        try {
+
+            $queryBuilder = $this->connectionPool->getQueryBuilderForTable('websites');
+            $websites = $queryBuilder
+                ->select('*')
+                ->from('websites')
+                ->execute()
+            ->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($websites as $website) {
+                $queryBuilder = $this->connectionPool->getQueryBuilderForTable('pages');
+
+                $queryBuilder = $this->connectionPool->getQueryBuilderForTable('pages');
+                $pages = $queryBuilder
+                    ->select('*')
+                    ->from('pages')
+                    ->where(
+                        $queryBuilder->expr()->eq('website_uid', $website['uid'])
+                    )
+                    ->execute()
+                    ->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($pages as $page) {
+                    // delete contents
+                    $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tt_content');
+                    $queryBuilder
+                        ->delete('tt_content')
+                        ->where(
+                            $queryBuilder->expr()->eq('pid', $page['uid'])
+                        )
+                        ->execute();
+
+                    // delete sys_templates
+                    $queryBuilder = $this->connectionPool->getQueryBuilderForTable('sys_template');
+                    $queryBuilder
+                        ->delete('sys_template')
+                        ->where(
+                            $queryBuilder->expr()->eq('pid', $page['uid'])
+                        )
+                        ->execute();
+
+                    if ($page['is_siteroot'] == 1) {
+                        // delete groups, users, filemounts
+                        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('be_groups');
+                        $be_groups = $queryBuilder
+                            ->select('*')
+                            ->from('be_groups')
+                            ->where(
+                                $queryBuilder->expr()->eq('db_mountpoints', $page['uid'])
+                            )
+                            ->execute()
+                            ->fetchAll(PDO::FETCH_ASSOC);
+
+                        foreach ($be_groups as $be_group) {
+
+                            $queryBuilder = $this->connectionPool->getQueryBuilderForTable('be_users');
+                            $queryBuilder
+                                ->delete('be_users')
+                                ->where(
+                                    $queryBuilder->expr()->eq('usergroup', $be_group['uid'])
+                                )
+                                ->execute();
+
+                            foreach (explode(',', $be_groups['file_mountpoints']) as $mountpointUid) {
+                                if (is_numeric($mountpointUid)) {
+                                    $queryBuilder = $this->connectionPool->getQueryBuilderForTable('sys_filemounts');
+                                    $path = $queryBuilder
+                                        ->select('path')
+                                        ->from('sys_filemounts')
+                                        ->where(
+                                            $queryBuilder->expr()->eq('uid', $mountpointUid)
+                                        )
+                                        ->execute()
+                                        ->fetchColumn(0);
+
+                                    $trashbin[] = $this->typo3_install_dir() . $path;
+
+                                    $queryBuilder = $this->connectionPool->getQueryBuilderForTable('sys_filemounts');
+                                    $queryBuilder
+                                        ->delete('sys_filemounts')
+                                        ->where(
+                                            $queryBuilder->expr()->eq('uid', $mountpointUid)
+                                        )
+                                        ->execute();
+                                }
+                            }
+                        }
+                        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('be_groups');
+                        $queryBuilder
+                            ->delete('be_groups')
+                            ->where(
+                                $queryBuilder->expr()->eq('db_mountpoints', $page['uid'])
+                            )
+                            ->execute();
+                    }
+                }
+
+                // delete pages
+                $queryBuilder = $this->connectionPool->getQueryBuilderForTable('pages');
+                $queryBuilder
+                    ->delete('pages')
+                    ->where(
+                        $queryBuilder->expr()->eq('website_uid', $website['uid'])
+                    )
+                    ->execute();
+
+                // remove site config
+                $siteDir = $this->typo3_install_dir() . '/typo3conf/sites/' . $website['config_identifier'];
+                $trashbin[] = $siteDir;
+            }
+
+            // delete websites
+            $queryBuilder = $this->connectionPool->getQueryBuilderForTable('websites');
+            $queryBuilder
+                ->delete('websites')
+                ->execute();
+
+            foreach ($trashbin as $dirname) {
+                $this->rrmdir($dirname);
+            }
+
+            // Try to commit the result
+            $commitSuccess = $this->connectionPool->getConnectionByName('Default')->commit();
+            if (!$commitSuccess) {
+                throw new \RuntimeException('Something went wrong while committing the result');
+            }
+        } catch(\Throwable $e) {
+            // rollback
+            $this->connectionPool->getConnectionByName('Default')->rollback();
+            throw $e;
+        }
     }
 
     /**
@@ -427,12 +572,10 @@ class SiteController extends ActionController
      */
     private function writeConfigFile(int $rootUid): string
     {
-        $TYPO3_INSTALL_DIR = dirname(__FILE__, 6);
-
         $website = $this->websiteRepository->getWebsiteByPageUid($rootUid);
 
         $identifier = $website['subdomain'];
-        $configDir = $TYPO3_INSTALL_DIR . "/typo3conf/sites/" . $identifier;
+        $configDir = $this->typo3_install_dir() . "/typo3conf/sites/" . $identifier;
         $configFilename = $configDir . "/config.yaml";
 
         if (file_exists($configFilename)) {
@@ -452,7 +595,7 @@ class SiteController extends ActionController
         // Set the owner and mods, in case www-data is not the one who run this command
         // @see https://www.php.net/manual/fr/function.stat.php
         try {
-            $stats = stat($TYPO3_INSTALL_DIR . '/index.php');
+            $stats = stat($this->typo3_install_dir() . '/index.php');
             chown($configFilename, $stats['4']);
             chgrp($configFilename, $stats['5']);
             chmod($configFilename, $stats['2']);
@@ -605,5 +748,20 @@ class SiteController extends ActionController
         }
 
         return $rootUid;
+    }
+
+    /**
+     * Recursively remove the target directory (! no rollback available)
+     */
+    private function rrmdir(string $dir) {
+        if (!is_dir($dir) || is_link($dir)) return unlink($dir);
+        foreach (scandir($dir) as $file) {
+            if ($file == '.' || $file == '..') continue;
+            if (!$this->rrmdir($dir . DIRECTORY_SEPARATOR . $file)) {
+                chmod($dir . DIRECTORY_SEPARATOR . $file, 0777);
+                if (!$this->rrmdir($dir . DIRECTORY_SEPARATOR . $file)) return false;
+            };
+        }
+        return rmdir($dir);
     }
 }
