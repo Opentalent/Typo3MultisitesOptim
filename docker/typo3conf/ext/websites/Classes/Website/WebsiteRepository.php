@@ -155,19 +155,21 @@ class WebsiteRepository
      * @return Site
      * @throws NoSuchWebsiteException
      */
-    public function matchUriToWebsite(\Psr\Http\Message\UriInterface $uri, bool $devMode=false): array
+    public function matchUriToWebsite(\Psr\Http\Message\UriInterface $uri): array
     {
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable('websites');
 
-        $domain = RouteNormalizer::normalizeDomain($uri->getHost());
+        $path = RouteNormalizer::normalizePath($uri->getPath());
+        preg_match("/([\w\-]+)(?:\/.*)?/", $path, $m);
 
-        $q = $queryBuilder
+        $website = $queryBuilder
             ->select('*')
             ->from('websites')
-            ->where($queryBuilder->expr()->eq('domain', $queryBuilder->expr()->literal($domain)));
-
-        $website = $q->execute()
-                    ->fetch();
+            ->where(
+                $queryBuilder->expr()->eq('subdomain', $queryBuilder->expr()->literal($m[1]))
+            )
+            ->execute()
+            ->fetch();
 
         if (!isset($website['uid'])) {
             throw new NoSuchWebsiteException('No website found for this URI: ' . $uri);
@@ -183,15 +185,10 @@ class WebsiteRepository
      * @return int
      * @throws NoSuchWebsiteException
      */
-    public function matchUriToPage(array $website, UriInterface $uri, bool $devMode=false): int
+    public function matchUriToPage(array $website, UriInterface $uri): int
     {
         $tail = $uri->getPath();
-        if ($devMode) {
-            $tail = preg_replace("/\/?[\w\-]+\/?(.*)/", "/$1", $tail);
-        }
-        if ($tail != "/") {
-            $tail = rtrim($tail, '/');
-        }
+        $tail = preg_replace("/\/?[\w\-]+\/?(.*)/", "/$1", $tail);
 
         $q = $this->connectionPool->getQueryBuilderForTable('pages');
         return $q

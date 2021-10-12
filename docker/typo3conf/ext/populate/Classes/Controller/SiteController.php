@@ -173,11 +173,12 @@ class SiteController extends ActionController
 
             // Create the user_upload and form_definitions directories and update the sys_filemounts table
             $uploadRelPath = "/user_upload/" . $websiteUid;
-            $fileadminDir = $this->typo3_install_dir() . "/public/fileadmin";
-            $uploadDir = $fileadminDir . "/" . $uploadRelPath;
+            $fileadminDir = $this->typo3_install_dir() . "/fileadmin";
+            $uploadDir = $fileadminDir . $uploadRelPath;
             if (file_exists($uploadDir)) {
                 throw new \RuntimeException("A directory or file " . $uploadDir . " already exists. Abort.");
             }
+
 
             $formsRelPath = '/form_definitions/' . $websiteUid;
             $formsDir = $fileadminDir . $formsRelPath;
@@ -427,6 +428,9 @@ class SiteController extends ActionController
         $queryBuilder->update('websites')
             ->set('name', 'Website ' . $websiteUid)
             ->set('subdomain', 'website' . $websiteUid)
+            ->where(
+                $queryBuilder->expr()->eq('uid', $websiteUid)
+            )
             ->execute();
 
         return $websiteUid;
@@ -533,7 +537,7 @@ class SiteController extends ActionController
      * @param string $dirPath
      */
     private function mkDir(string $dirPath) {
-        mkdir($dirPath);
+        mkdir($dirPath, 771, true);
         $this->createdDirs[] = $dirPath;
         chgrp($dirPath, 'www-data');
     }
