@@ -19,12 +19,30 @@ services:
     container_name: multisites_optim_typo3
     build:
       context: .
-      dockerfile: ./docker/Dockerfile
+      dockerfile: docker/Dockerfile
     ports:
       - "8080:80"
+    networks:
+      default:
+        aliases:
+          - local.typo3.net
     volumes:
       - ./docker/fileadmin:/var/www/html/fileadmin:cached
       - ./docker/typo3conf:/var/www/html/typo3conf:cached
       - ./docker/uploads:/var/www/html/uploads:cached
     depends_on:
       - multisites_optim_db
+
+  multisites_optim_blackfire:
+    hostname: multisites_optim_blackfire
+    container_name: multisites_optim_blackfire
+    image: blackfire/blackfire:2
+    ports: ["8307"]
+    environment:
+      - BLACKFIRE_LOG_LEVEL=4
+      - BLACKFIRE_SERVER_ID=${BLACKFIRE_SERVER_ID}
+      - BLACKFIRE_SERVER_TOKEN=${BLACKFIRE_SERVER_TOKEN}
+      - BLACKFIRE_CLIENT_ID=${BLACKFIRE_CLIENT_ID}
+      - BLACKFIRE_CLIENT_TOKEN=${BLACKFIRE_CLIENT_TOKEN}
+    depends_on:
+      - multisites_optim_typo3
