@@ -1,3 +1,4 @@
 /.project
 /.idea/
 /.env
+docker/typo3conf/sites/*

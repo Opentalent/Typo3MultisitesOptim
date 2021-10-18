@@ -5,6 +5,9 @@
 $typo3InstallDir = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
 
 return array(
+    'Opentalent\\Optimizer\\Middleware\\Frontend\\PageResolver' => $typo3InstallDir . 'typo3conf/ext/optimizer/Classes/Middleware/Frontend/PageResolver.php',
+    'Opentalent\\Optimizer\\Middleware\\Frontend\\SiteResolver' => $typo3InstallDir . 'typo3conf/ext/optimizer/Classes/Middleware/Frontend/SiteResolver.php',
+    'Opentalent\\Optimizer\\XClass\\Core\\Routing\\OtPageSlugCandidateProvider' => $typo3InstallDir . 'typo3conf/ext/optimizer/Classes/XClass/Core/Routing/OtPageSlugCandidateProvider.php',
     'Opentalent\\Populate\\Command\\ClearDbCommand' => $typo3InstallDir . 'typo3conf/ext/populate/Classes/Command/ClearDbCommand.php',
     'Opentalent\\Populate\\Command\\PopulateCommand' => $typo3InstallDir . 'typo3conf/ext/populate/Classes/Command/PopulateCommand.php',
     'Opentalent\\Populate\\Controller\\SiteController' => $typo3InstallDir . 'typo3conf/ext/populate/Classes/Controller/SiteController.php',

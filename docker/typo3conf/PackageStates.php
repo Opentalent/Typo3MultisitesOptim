@@ -95,6 +95,9 @@ return [
         'viewpage' => [
             'packagePath' => 'typo3/sysext/viewpage/',
         ],
+        'optimizer' => [
+            'packagePath' => 'typo3conf/ext/optimizer/',
+        ],
         'populate' => [
             'packagePath' => 'typo3conf/ext/populate/',
         ],

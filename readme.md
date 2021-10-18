@@ -16,7 +16,6 @@ To setup:
     cd multisites_optim
     docker-compose build
     docker-compose up
-    docker exec -it multisites_optim_typo3 bash
 
 > This typo3 container is listening by default on port 8080, change it in the docker-compose.yml file if needed
 > The mysql db is listening by default on port 3307, change it in the docker-compose.yml file if needed
@@ -37,11 +36,11 @@ Apply the suggested changes, if any.
 
 To populate the DB with 3000 websites (default):
 
-    php /var/www/html/typo3/sysext/core/bin/typo3 ot:populate
+    docker-compose exec multisites_optim_typo3 php /var/www/html/typo3/sysext/core/bin/typo3 ot:populate
 
 Or specify the amount of websites you need:
 
-    php /var/www/html/typo3/sysext/core/bin/typo3 ot:populate 1500
+    docker-compose exec multisites_optim_typo3 pphp /var/www/html/typo3/sysext/core/bin/typo3 ot:populate 1500
 
 > If needed, you can also use the command `php /var/www/html/typo3/sysext/core/bin/typo3 ot:clear-db` to remove all
 > the websites created with the populate command
@@ -49,6 +48,28 @@ Or specify the amount of websites you need:
 #### Control the result
 
 Try to display a page, without and with the 'optimizer' extension enabled.
+
+If you possess a blackfire account, you can also run it against your Typo3 instance, before and after the populate,
+with the command:
+
+    docker-composer exec multisites_optim_blackfire blackfire curl http://local.typo3.net/website1000
+
+Don't forget to replace the tested url according to your typo3 instance.
+
+> To use blackfire, you'll have to create a file named `.env` at the root of your project, containing the following lines:
+> `BLACKFIRE_CLIENT_ID=<value>`
+> `BLACKFIRE_CLIENT_TOKEN=<value>`
+> `BLACKFIRE_SERVER_ID=<value>`
+> `BLACKFIRE_SERVER_TOKEN=<value>`
+>
+> You can find the corresponding ids on your blackfire profile page
+
+
+You can also consult those two blackfire reports, executed on the same instance of typo3, with 3510 websites 
+and the cache flushed before each one:
+
+* With **optimizer extension disabled**: <https://blackfire.io/profiles/1ccb80ed-08ae-40e3-8106-855039581ee8/graph>
+* With **optimizer extension enabled**: <https://blackfire.io/profiles/23e7967a-13b4-4db4-baad-a4b51d49112c/graph>
 
 
 ### Context
