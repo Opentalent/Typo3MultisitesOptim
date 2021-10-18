@@ -40,7 +40,7 @@ To populate the DB with 3000 websites (default):
 
 Or specify the amount of websites you need:
 
-    docker-compose exec multisites_optim_typo3 pphp /var/www/html/typo3/sysext/core/bin/typo3 ot:populate 1500
+    docker-compose exec multisites_optim_typo3 php /var/www/html/typo3/sysext/core/bin/typo3 ot:populate 1500
 
 > If needed, you can also use the command `php /var/www/html/typo3/sysext/core/bin/typo3 ot:clear-db` to remove all
 > the websites created with the populate command
